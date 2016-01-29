@@ -201,7 +201,14 @@ specs = plyr::ddply(specs, "param", function(x){
   })
 
 ggplot(specs) + geom_bar(mapping = aes(x = m, y=i, fill=param), stat="identity",position="dodge")
-ggplot(subset(specs, m < 812)) + geom_bar(mapping = aes(x = m, y=-log10(i), fill=param), stat="identity",position="dodge")
+
+specs2  = specs
+specs2[10:13,"i"] = (specs2[10:13,"i"] - specs2[1:4,"i"])/specs2[1:4,"i"]*100
+specs2[14:18,"i"] = (specs2[14:18,"i"] - specs2[1:5,"i"])/specs2[1:5,"i"]*100
+specs2[19:23,"i"] = (specs2[19:23,"i"] - specs2[1:5,"i"])/specs2[1:5,"i"]*100
+specs2[1:9,"i"] = specs2[1:9,"i"] - specs2[1:9,"i"]
+
+ggplot(subset(specs2, m < 812)) + geom_bar(mapping = aes(x = m, y=i, fill=param), stat="identity",position="dodge") + ggtitle("Percent error from theoretical")
 ```
 Param 0 is the theoretical distribution. 1 = QTOF, 16 and 200 = QE
 
