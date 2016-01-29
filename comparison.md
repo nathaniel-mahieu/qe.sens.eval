@@ -257,7 +257,13 @@ ggplot(specs) + geom_bar(mapping = aes(x = m, y=i, fill=param), stat="identity",
 <img src="figure/unnamed-chunk-6-1.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" style="display: block; margin: auto;" />
 
 ```r
-ggplot(subset(specs, m < 812)) + geom_bar(mapping = aes(x = m, y=-log10(i), fill=param), stat="identity",position="dodge")
+specs2  = specs
+specs2[10:13,"i"] = (specs2[10:13,"i"] - specs2[1:4,"i"])/specs2[1:4,"i"]*100
+specs2[14:18,"i"] = (specs2[14:18,"i"] - specs2[1:5,"i"])/specs2[1:5,"i"]*100
+specs2[19:23,"i"] = (specs2[19:23,"i"] - specs2[1:5,"i"])/specs2[1:5,"i"]*100
+specs2[1:9,"i"] = specs2[1:9,"i"] - specs2[1:9,"i"]
+
+ggplot(subset(specs2, m < 812)) + geom_bar(mapping = aes(x = m, y=i, fill=param), stat="identity",position="dodge") + ggtitle("Percent error from theoretical")
 ```
 
 <img src="figure/unnamed-chunk-6-2.png" title="plot of chunk unnamed-chunk-6" alt="plot of chunk unnamed-chunk-6" style="display: block; margin: auto;" />
