@@ -76,6 +76,9 @@ accoa = as.data.frame(matrix(c(808,100,809,29.4683,810,12.0383,811,2.659,812,0.5
 accoa$am = sapply(0:8, function(i) { 808.117959 + i*c1213 })
 accoa
 
+accoa$em = c(808.1229, 809.1244, 810.1229, 811.1250, 812.1265, 813.1218, 814.0896, NA, NA)
+accoa$tm = c(808.1234, 809.1263, 810.1259, 811.1262, NA, NA, NA, NA, NA)
+
 ppm = 808/1E6
 
 ggplot(accoa) + geom_segment(aes(x = am, xend=am, y = i, yend =0))
@@ -84,27 +87,44 @@ ggplot(accoa) + geom_segment(aes(x = am, xend=am, y = i, yend =0))
 # EICs
 ```{r}
 
-qe.eic = getEIC(qe, mzrange = cbind(accoa[,"am"]-ppm*5, accoa[,"am"]+ppm*5), rtrange = cbind(rep(0, nrow(accoa)), rep(max(qe@scantime), nrow(accoa))))@eic[[1]]
-
-qe.eic = as.data.frame(do.call(rbind, lapply(seq_along(qe.eic), function(i) { cbind(qe.eic[[i]], iso = i) })))
+qe.eic = as.data.frame(do.call(rbind, lapply(seq(nrow(accoa)), function(i) {
+  cbind(do.call(cbind, rawEIC(qe, mzrange = c(accoa[i,"em"]-ppm*10, accoa[i,"em"]+ppm*10), rtrange = c(0, length(qe@scantime)))), iso = i)
+  })))
 qe.eic$iso = factor(qe.eic$iso)
+qe.eic$time = qe@scantime[qe.eic$scan]
 
-ggplot(qe.eic) + geom_line(aes(x = rt, y = intensity, colour = iso)) + facet_grid(iso~., scales = "free_y") + ggtitle("QE Isos of AcCoA")
+ggplot(qe.eic) + geom_line(aes(x = time, y = intensity, colour = iso)) + facet_grid(iso~., scales = "free_y") + ggtitle("QE Isos of AcCoA")
 
 ```
 From left to right the ion accumulation times are approximately: 10ms, 5ms, 1ms, 16ms, 30ms, 60ms, 90ms, 90ms, 200ms (100% full trap with all AcCoA)
 
 ```{r}
 
-qt.eic = getEIC(qt, mzrange = cbind(accoa[,"am"]-ppm*5, accoa[,"am"]+ppm*5), rtrange = cbind(rep(0, nrow(accoa)), rep(max(qe@scantime), nrow(accoa))))@eic[[1]]
-
-qt.eic = as.data.frame(do.call(rbind, lapply(seq_along(qt.eic), function(i) { cbind(qt.eic[[i]], iso = i) })))
+qt.eic = as.data.frame(do.call(rbind, lapply(seq(nrow(accoa)), function(i) {
+  cbind(do.call(cbind, rawEIC(qt, mzrange = c(accoa[i,"tm"]-ppm*25, accoa[i,"tm"]+ppm*25), rtrange = c(0, length(qt@scantime)))), iso = i)
+  })))
 qt.eic$iso = factor(qt.eic$iso)
+qt.eic$time = qt@scantime[qt.eic$scan]
 
-ggplot(qt.eic) + geom_line(aes(x = rt, y = intensity, colour = iso)) + facet_grid(iso~., scales = "free_y") + ggtitle("QTOF Isos of AcCoA")
+ggplot(qt.eic) + geom_line(aes(x = time, y = intensity, colour = iso)) + facet_grid(iso~., scales = "free_y") + ggtitle("QTOF Isos of AcCoA")
+
 
 ```
 From left to right the scan rates are: 1Hz, 5Hz, 10Hz, 20Hz, 0.86Hz, 1Hz
+
+##Summary
+
+LOD as [AcCoA]/x inferred from theoretical isotope distribution
+
+|Instrument|Parameter|x|
+|---|---|---|
+|QTOF|0.1s|<8|
+|QTOF|0.2s|8|
+|QTOF|1s|37|
+|QE|1ms|8|
+|QE|10ms|37|
+|QE|30ms|166|
+
 
 # Conlusions
 Notation: 
@@ -113,10 +133,10 @@ QE@30 means QE at 30 milliseconds accumulation
 
 The QE@10 approximates or superscedes the LOD of the QTOF@1.
 
-# Brief Anecdote About Regions to Split
+## Brief Anecdote About Regions to Split
 *Caution, approximations*
 
-In an analysis of E.Coli the minimum IT (at maximum ion flux) was 1ms. The maximum IT was 4ms. The mean was 3ms.
+In an analysis of E.Coli the minimum IT (at maximum ion flux) was 1ms. The maximum IT was 9ms. The mean was 3ms.
 
 We can achieve a scan rate of:
 8Hz @ 35k
@@ -128,21 +148,62 @@ We want 15 scans across each peak.
 
 Therefore at 70k RP we can carve up the mass range into 4 regions.  If flux is equally distributed across them then at maximum ion flux we will underpreform the QTOF.  See table for more examples.
 
-|Hz|RP|Max Regions|IT Per Region (min)|IT Per Region (max)|%QTOF (Way Approx) (max)|
-|---|---|---|---|---|---|---|
-|8|35k|8|8ms|32ms|320%|
-|4|70k|4|4ms|16ms|160%|
-|2|140k|2|2ms|8ms|80%|
+|Hz|RP|Max Regions|IT Per Region (min)|IT Per Region (max)|%QTOF (Way Approx) (min)|%QTOF (Way Approx) (max)|
+|---|---|---|---|---|---|---|---|
+|8|35k|8|8ms|72ms|80%|720%|
+|4|70k|4|4ms|36ms|40%|360%|
+|2|140k|2|2ms|18ms|20%|180%|
 
 **Note: A large amount of the ion flux in this method is persistent background!! The use of a cleaner method would make the QE scream compared to the QTOF.  (Motivation)**
 
-# Additional Anecdotes Based On Other Data
+## Additional Anecdotes Based On Other Data
 |Sample|Method|Min IT|Max IT|
 |---|---|---|---|
 |20150511 HeLa|+C18|10ms|100ms|
 |20150720 HeLa|-HILIC|2ms|30ms|
 |20151119 Lysate|-HILIC|1ms|10ms
 
+
+## Addtional Conlusions
+Splitting up the mass region would make non-crowded regions of mass space extremely sensitive, while crowded regions would be more comaprable to QTOF sensitivities.  
+
+#Linearity
+
+```{r}
+
+qe.spec.16 = cbind(matrix(
+  c(4991904.5, 1428682.5, 554655.0, 115104.1, 24560.4, 808, 809, 810, 811, 812), 
+  ncol=2, byrow=F, dimnames=list(NULL, c("i", "m"))
+  ), param = 16)
+
+
+qe.spec.200 = cbind(matrix(
+  c(4829358.0, 1377764.1, 536236.7, 113288.8, 22698.9, 808, 809, 810, 811, 812), 
+  ncol=2, dimnames=list(NULL, c("i", "m"))
+  ), param = 200)
+
+qt.spec.1 = cbind(matrix(
+  c(8147.03, 2640.04, 937.55, 185.23, 808, 809, 810, 811), 
+  ncol=2, dimnames=list(NULL, c("i", "m"))
+  ), param = 1)
+
+specs = data.frame(do.call(rbind, list(
+  qe.spec.16,
+  qe.spec.200,
+  qt.spec.1,
+  cbind(accoa[,c("m", "i")], param = 0)
+  )))
+specs$param = factor(specs$param)
+
+specs = plyr::ddply(specs, "param", function(x){
+  x$i = x$i / max(x$i)
+  x
+  })
+
+ggplot(specs) + geom_bar(mapping = aes(x = m, y=i, fill=param), stat="identity",position="dodge")
+ggplot(subset(specs, m < 812)) + geom_bar(mapping = aes(x = m, y=-log10(i), fill=param), stat="identity",position="dodge")
+```
+Param 0 is the theoretical distribution. 1 = QTOF, 16 and 200 = QE
 
 ----
 
